@@ -1,0 +1,51 @@
+# Dependency directories
+node_modules/
+/jspm_packages/
+
+# Next.js build output
+.next/
+out/
+
+# Production build artifacts
+build/
+dist/
+
+# Local environment variable configuration files (CRITICAL: Prevents API key leaks)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env
+.env.production
+
+# PM2 runtime runtime tracking states
+.pm2/
+pids/
+logs/
+*.log
+ecosystem.config.js
+
+# Netlify production tracking artifacts
+.netlify/
+
+# System-specific hidden metadata files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript declaration file caching indices
+*.tsbuildinfo
+next-env.d.ts
+
+# Optional: Ignore generated spreadsheet data or translations downloaded during development testing
+translations.json
+*translated_email.html
+*.xlsx
+*.xls
+*.csv

@@ -123,8 +123,8 @@ export default function TranslatorWorkspace() {
       const targetDict = translationData[matchedLangKey];
       const sourceDict = translationData[matchedSourceKey];
 
-      // 1. Process local Cheerio DOM tree replacement pipeline
-      const $ = cheerio.load(rawHtmlContent, { xmlMode: false, decodeEntities: false });
+      // 1. Process local Cheerio DOM tree replacement pipeline (Type-Safe Fix Apply)
+      const $ = cheerio.load(rawHtmlContent, { xmlMode: false });
 
       $('*').contents().each(function() {
         if (this.type === 'text') {

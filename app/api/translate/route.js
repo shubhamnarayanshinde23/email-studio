@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
 import { processEmailTranslation } from '@/lib/translator';
 
+// FORCE NEXT.JS TO DEPLOY THIS SPECIFIC ENDPOINT TO NETLIFY EDGE STREAMING RUNTIME
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
@@ -32,7 +33,7 @@ export async function POST(request) {
     const targetDict = translationData[matchedLangKey];
     const sourceDict = translationData[matchedSourceKey];
 
-    // CRITICAL: Await the response from the LLM engine processing loop
+    // Await the response from the LLM engine processing loop
     const compiledHtmlOutput = await processEmailTranslation(htmlText, targetDict, sourceDict, brandCode, targetLang);
 
     return new Response(compiledHtmlOutput, {
@@ -44,6 +45,7 @@ export async function POST(request) {
       },
     });
   } catch (error) {
+    console.error("Edge runtime processing error:", error);
     return new Response(`Internal Engine Error: ${error.message}`, { status: 500 });
   }
 }

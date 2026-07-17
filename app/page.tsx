@@ -1,7 +1,6 @@
 'use client';
 import { useState, FormEvent, ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
-import * as cheerio from 'cheerio';
 
 export default function TranslatorWorkspace() {
   const [targetLang, setTargetLang] = useState<string>('BEFR');
@@ -9,15 +8,6 @@ export default function TranslatorWorkspace() {
   const [status, setStatus] = useState<string>('Workspace status: Idle / Ready');
   const [loading, setLoading] = useState<boolean>(false);
   const [excelRows, setExcelRows] = useState<any[] | null>(null);
-
-  const readFileAsText = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => resolve(event.target?.result as string);
-      reader.onerror = (error) => reject(error);
-      reader.readAsText(file);
-    });
-  };
 
   // ==========================================
   // COMPONENT WORKFLOW 1: SHEET MATRIX PARSING TO NESTED JSON
@@ -99,12 +89,12 @@ export default function TranslatorWorkspace() {
   };
 
   // ==========================================
-  // COMPONENT WORKFLOW 2: BROWSER-SIDE LOCAL HTML TEXT REWRITE
+  // COMPONENT WORKFLOW 2: REWRITE EMAIL VIA BACKEND SERVER ROUTE
   // ==========================================
   const executeTranslationSequence = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setStatus('⏳ Running client-side browser localization engine layout mapping...');
+    setStatus('⏳ Running server AST processing loop framework...');
 
     const jsonInput = document.getElementById('jsonUpload') as HTMLInputElement;
     const htmlInput = document.getElementById('htmlUpload') as HTMLInputElement;
@@ -115,125 +105,29 @@ export default function TranslatorWorkspace() {
       return;
     }
 
+    const formData = new FormData();
+    formData.append('jsonFile', jsonInput.files[0]);
+    formData.append('htmlFile', htmlInput.files[0]);
+    formData.append('targetLang', targetLang);
+    formData.append('brandCode', brandCode);
+
     try {
-      const rawJsonText = await readFileAsText(jsonInput.files[0]);
-      const rawHtmlContent = await readFileAsText(htmlInput.files[0]);
+      const response = await fetch('/api/translate', { method: 'POST', body: formData });
 
-      const translationData = JSON.parse(rawJsonText);
-      const matchedLangKey = Object.keys(translationData).find(k => k.toUpperCase() === targetLang);
-      const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'GTINSIDERS');
-
-      if (!matchedLangKey || !translationData[matchedLangKey] || !matchedSourceKey || !translationData[matchedSourceKey]) {
-        throw new Error('Target language dictionary key match mismatch inside JSON configuration mappings.');
+      // FIX: Insulated error text extractor to isolate server-side string drops safely
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'The server failed processing the template transformation.';
+        try {
+          const parsedError = JSON.parse(errorText);
+          errorMessage = parsedError.error || errorMessage;
+        } catch {
+          errorMessage = errorText || `Server error status: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const targetDict = translationData[matchedLangKey];
-      const sourceDict = translationData[matchedSourceKey];
-
-      // 1. Load Cheerio securely without the obsolete decodeEntities configuration property
-      const $ = cheerio.load(rawHtmlContent, { xmlMode: false });
-
-      // Swap vocabulary strings directly using browser thread cache mappings
-      $('*').contents().each(function() {
-        if (this.type === 'text') {
-          const textVal = $(this).text().trim();
-          if (textVal.length > 0) {
-            const matchingKey = Object.keys(sourceDict).find(k => sourceDict[k] && sourceDict[k].trim() === textVal);
-            if (matchingKey && targetDict[matchingKey]) {
-              const translatedStr = targetDict[matchingKey].trim().replace(/\\n/g, '<br />');
-              $(this).replaceWith(translatedStr);
-            }
-          }
-        }
-      });
-
-      // 2. Map structural SFMC link tracking fields and asset properties
-      let ctaCounter = 1;       
-      let activeCtaIndex = 1;   
-      let blockCounter = 1;
-      let isFirstImage = true;
-
-      $('*').contents().each(function() {
-        if (this.type === 'comment') {
-          const commentText = (this.data || '').toLowerCase();
-          if (commentText.includes('browser view link') || commentText.includes('mirror link')) {
-            const nearestAnchor = $(this).parent().find('a').first();
-            if (nearestAnchor.length) {
-              nearestAnchor.attr('alias', 'View In Browser');
-              nearestAnchor.attr('href', '%%view_email_url%%');
-              nearestAnchor.addClass('sfmc-mirror-processed');
-            }
-          }
-        }
-      });
-
-      $('a').each(function() {
-        const anchor = $(this);
-        if (anchor.hasClass('sfmc-mirror-processed')) {
-          anchor.removeClass('sfmc-mirror-processed');
-          return;
-        }
-
-        const img = anchor.find('img');
-        const alt = img.length ? (img.attr('alt') || '').trim().toLowerCase() : '';
-
-        if (alt.includes('facebook') || alt.includes('fb')) {
-          anchor.attr('alias', 'Facebook');
-          anchor.attr('href', '%%=redirectto(@fb)=%%');
-          return;
-        } 
-        if (alt.includes('instagram') || alt.includes('ig')) {
-          anchor.attr('alias', 'Instagram');
-          anchor.attr('href', '%%=redirectto(@ig)=%%');
-          return;
-        } 
-        if (alt.includes('twitter') || alt.includes('x.com') || alt.includes('tw')) {
-          anchor.attr('alias', 'Twitter');
-          anchor.attr('href', '%%=redirectto(@tw)=%%');
-          return;
-        } 
-        if (alt.includes('youtube') || alt.includes('yt')) {
-          anchor.attr('alias', 'YouTube');
-          anchor.attr('href', '%%=redirectto(@yt)=%%');
-          return;
-        } 
-        if (alt.includes('linkedin') || alt.includes('ln') || alt.includes('in')) {
-          anchor.attr('alias', 'LinkedIn');
-          anchor.attr('href', '%%=redirectto(@li)=%%');
-          return;
-        } 
-        if (alt.includes('pinterest') || alt.includes('pin')) {
-          anchor.attr('alias', 'Pinterest');
-          anchor.attr('href', '%%=redirectto(@pin)=%%');
-          return;
-        } 
-        if (alt.includes('logo')) {
-          anchor.attr('alias', 'Logo');
-          anchor.attr('href', '%%=redirectto(@logo)=%%');
-          return;
-        } 
-
-        if (img.length) {
-          if (isFirstImage) {
-            anchor.attr('alias', `Image_${brandCode}${targetLang}_Hero`);
-            anchor.attr('href', `%%=redirectto(@cta${activeCtaIndex})=%%`);
-            isFirstImage = false;
-          } else {
-            anchor.attr('alias', `Image_${brandCode}${targetLang}_Block${blockCounter}`);
-            anchor.attr('href', `%%=redirectto(@cta${activeCtaIndex})=%%`);
-            blockCounter++;
-          }
-        } else {
-          anchor.attr('alias', `Button_${brandCode}${targetLang}_CTA${ctaCounter}`);
-          anchor.attr('href', `%%=redirectto(@cta${ctaCounter})=%%`);
-          ctaCounter++;
-          activeCtaIndex = ctaCounter;
-        }
-      });
-
-      // 3. Compile output text documents and fire local download routine
-      const finalHtml = $.html();
-      const fileBlob = new Blob([finalHtml], { type: 'text/html;charset=utf-8;' });
+      const fileBlob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(fileBlob);
       const downloadAnchor = document.createElement('a');
       downloadAnchor.href = downloadUrl;
@@ -242,7 +136,7 @@ export default function TranslatorWorkspace() {
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      setStatus('🚀 Complete! Precise style-safe layout file generated natively inside client memory spaces.');
+      setStatus('🚀 Complete! Precise style-safe layout file generated without text shifting errors.');
     } catch (err: any) {
       setStatus(`❌ Optimization Error: ${err.message}`);
     } finally {
@@ -252,7 +146,7 @@ export default function TranslatorWorkspace() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-6 gap-6">
-      {/* BRAND LOGO WRAPPER */}
+      {/* BRAND LOGO WRAPPER - PLACED DIRECTLY AT TOP OUTSIDE THE MAIN CARD */}
       <div className="w-full max-w-2xl flex justify-center mt-4">
         <div className="w-30 h-30 flex items-center justify-center overflow-hidden">
           <img 
@@ -263,9 +157,9 @@ export default function TranslatorWorkspace() {
               e.currentTarget.style.display = 'none';
             }} 
           />
+          {/* <span className="text-white font-black text-2xl tracking-tight pointer-events-none select-none">Σ</span> */}
         </div>
       </div>
-      
       <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl p-8 mt-5">
         <div className="mb-6">
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 mb-1">
@@ -325,14 +219,14 @@ export default function TranslatorWorkspace() {
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-teal-500 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50 text-sm uppercase tracking-wider cursor-pointer">
-            {loading ? '⏳ Processing Elements Natively...' : '🚀 Localize HTML Content Layout'}
+            {loading ? '⏳ Rendering Unified Layout Tree...' : '🚀 Localize HTML Content Layout'}
           </button>
         </form>
 
         <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
           {status}
         </div>
-        
+          {/* INSERT THE NOTICE BADGE COMPONENT CODE RIGHT HERE */}
         <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
           <span className="text-xl shrink-0 select-none">⚠️</span>
           <div>

@@ -1,57 +1,49 @@
 import { NextResponse } from 'next/server';
+import { processEmailTranslation } from '@/lib/translator';
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    const { textGroup, targetLang } = await request.json();
+    const formData = await request.formData();
+    const jsonFile = formData.get('jsonFile');
+    const htmlFile = formData.get('htmlFile');
+    const targetLang = formData.get('targetLang')?.toString().trim().toUpperCase() || 'BEFR';
+    const brandCode = formData.get('brandCode')?.toString().trim().toUpperCase() || 'AP';
 
-    if (!textGroup || textGroup.length === 0) {
-      return NextResponse.json({ translatedGroup: [] }, { status: 200 });
+    if (!jsonFile || !htmlFile) {
+      return new Response('Missing required JSON or HTML files.', { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY is not configured on Vercel settings." }, { status: 500 });
+    const jsonText = await jsonFile.text();
+    const htmlText = await htmlFile.text();
+    const translationData = JSON.parse(jsonText);
+
+    const matchedLangKey = Object.keys(translationData).find(k => k.toUpperCase() === targetLang);
+    const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'GTINSIDERS');
+
+    if (!matchedLangKey || !translationData[matchedLangKey]) {
+      return new Response(`Target language "${targetLang}" not found in JSON data.`, { status: 400 });
+    }
+    if (!matchedSourceKey || !translationData[matchedSourceKey]) {
+      return new Response('Source reference block key "EN" or "GTINSIDERS" not found in JSON data.', { status: 400 });
     }
 
-    const systemInstruction = `
-You are an expert enterprise localization engine.
-Translate the provided array of English strings into the target language (${targetLang}).
-Return ONLY a raw JSON array of strings matching the exact same index order. Do not wrap in markdown or add notes.
-`;
+    const targetDict = translationData[matchedLangKey];
+    const sourceDict = translationData[matchedSourceKey];
 
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // CRITICAL: Await the response from the LLM engine processing loop
+    const compiledHtmlOutput = await processEmailTranslation(htmlText, targetDict, sourceDict, brandCode, targetLang);
 
-    const apiResponse = await fetch(geminiEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: JSON.stringify(textGroup) }] }],
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        generationConfig: {
-          temperature: 0.0,
-          responseMimeType: "application/json"
-        }
-      })
+    return new Response(compiledHtmlOutput, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${targetLang}_translated_email.html"`,
+        'X-Content-Type-Options': 'nosniff'
+      },
     });
-
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      return NextResponse.json({ error: `Gemini API Error: ${errorText}` }, { status: 500 });
-    }
-
-    const responseData = await apiResponse.json();
-    let rawText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
-
-    if (rawText.startsWith('```json')) rawText = rawText.split('```json')[1].split('```')[0].trim();
-    if (rawText.startsWith('```')) rawText = rawText.split('```')[1].split('```')[0].trim();
-
-    const translatedGroup = JSON.parse(rawText);
-    return NextResponse.json({ translatedGroup }, { status: 200 });
-
   } catch (error) {
-    return NextResponse.json({ error: `Edge processing fault: ${error.message}` }, { status: 500 });
+    return new Response(`Internal Engine Error: ${error.message}`, { status: 500 });
   }
 }

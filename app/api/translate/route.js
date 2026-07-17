@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { processEmailTranslation } from '@/lib/translator';
 
+// 1. FORCE DEPLOYMENT TO NETLIFY'S EDGE RUNTIME TO PERMANENTLY RESOLVE 10-SECOND TIMEOUT BOUNDARIES
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
@@ -12,7 +14,10 @@ export async function POST(request) {
     const brandCode = formData.get('brandCode')?.toString().trim().toUpperCase() || 'AP';
 
     if (!jsonFile || !htmlFile) {
-      return new Response('Missing required JSON or HTML files.', { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Missing required JSON or HTML files.' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     const jsonText = await jsonFile.text();
@@ -23,10 +28,16 @@ export async function POST(request) {
     const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'GTINSIDERS');
 
     if (!matchedLangKey || !translationData[matchedLangKey]) {
-      return new Response(`Target language "${targetLang}" not found in JSON data.`, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: `Target language "${targetLang}" not found in JSON data.` }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     if (!matchedSourceKey || !translationData[matchedSourceKey]) {
-      return new Response('Source reference block key "EN" or "GTINSIDERS" not found in JSON data.', { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Source reference block key "EN" or "GTINSIDERS" not found in JSON data.' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     const targetDict = translationData[matchedLangKey];
@@ -44,6 +55,15 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    return new Response(`Internal Engine Error: ${error.message}`, { status: 500 });
+    console.error("Production Edge Handler Error:", error);
+    
+    // 2. ENCAPSULATE RUNTIME ERRORS IN JSON SO YOUR CLIENT-SIDE PAGE.TSX CAN PARSE AND DISPLAY THE REAL ERROR
+    return new Response(
+      JSON.stringify({ error: `Internal Engine Error: ${error.message}` }), 
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json; charset=utf-8' } 
+      }
+    );
   }
 }

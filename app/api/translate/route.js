@@ -1,13 +1,13 @@
 import { processEmailTranslation } from '@/lib/translator';
 
-// FORCE NEXT.JS TO DEPLOY THIS ROUTE TO NETLIFY'S EDGE STREAMING RUNTIME
-// This completely removes the 10-second FUNCTION_INVOCATION_TIMEOUT limit.
+// FORCE VERCEL TO EXECUTE THIS ROUTE ON THE INFRASTRUCTURE EDGE LAYER
+// This completely kills the 10-second FUNCTION_INVOCATION_TIMEOUT limit!
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    // Edge runtime reads incoming form data values via native Web API specifications
+    // Vercel Edge Runtime parses incoming multi-part payloads using Web API specifications
     const formData = await request.formData();
     const jsonFile = formData.get('jsonFile');
     const htmlFile = formData.get('htmlFile');
@@ -44,7 +44,7 @@ export async function POST(request) {
     const targetDict = translationData[matchedLangKey];
     const sourceDict = translationData[matchedSourceKey];
 
-    // Await the response from the style-preserving translation engine
+    // Fire the translation engine 
     const compiledHtmlOutput = await processEmailTranslation(htmlText, targetDict, sourceDict, brandCode, targetLang);
 
     return new Response(compiledHtmlOutput, {
@@ -56,15 +56,10 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Production Edge Handler Error:", error);
-    
-    // Encapsulate runtime errors in JSON so your page.tsx view can parse it safely
+    console.error("Vercel Edge Execution Fault:", error);
     return new Response(
       JSON.stringify({ error: `Internal Engine Error: ${error.message}` }), 
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json; charset=utf-8' } 
-      }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

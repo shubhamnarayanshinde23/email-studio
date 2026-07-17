@@ -19,6 +19,9 @@ export default function TranslatorWorkspace() {
     });
   };
 
+  // ==========================================
+  // COMPONENT WORKFLOW 1: SHEET MATRIX PARSING TO NESTED JSON
+  // ==========================================
   const handleExcelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -36,6 +39,7 @@ export default function TranslatorWorkspace() {
   const convertExcelToJson = () => {
     if (!excelRows) return alert("Please upload an Excel configuration sheet first.");
     setStatus('⏳ Processing spreadsheet matrix mapping structures...');
+    
     try {
       let headerRowIdx = -1;
       for (let i = 0; i < excelRows.length; i++) {
@@ -94,10 +98,13 @@ export default function TranslatorWorkspace() {
     }
   };
 
+  // ==========================================
+  // COMPONENT WORKFLOW 2: BROWSER-SIDE LOCAL HTML TEXT REWRITE
+  // ==========================================
   const executeTranslationSequence = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setStatus('⏳ Processing elements locally inside browser engine...');
+    setStatus('⏳ Running client-side browser localization engine layout mapping...');
 
     const jsonInput = document.getElementById('jsonUpload') as HTMLInputElement;
     const htmlInput = document.getElementById('htmlUpload') as HTMLInputElement;
@@ -117,15 +124,16 @@ export default function TranslatorWorkspace() {
       const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'GTINSIDERS');
 
       if (!matchedLangKey || !translationData[matchedLangKey] || !matchedSourceKey || !translationData[matchedSourceKey]) {
-        throw new Error('Target language dictionary match mismatch keys inside JSON mapping config.');
+        throw new Error('Target language dictionary key match mismatch inside JSON configuration mappings.');
       }
 
       const targetDict = translationData[matchedLangKey];
       const sourceDict = translationData[matchedSourceKey];
 
-      // 1. Process local Cheerio DOM tree replacement pipeline (Type-Safe Fix Apply)
+      // 1. Load Cheerio securely without the obsolete decodeEntities configuration property
       const $ = cheerio.load(rawHtmlContent, { xmlMode: false });
 
+      // Swap vocabulary strings directly using browser thread cache mappings
       $('*').contents().each(function() {
         if (this.type === 'text') {
           const textVal = $(this).text().trim();
@@ -139,7 +147,7 @@ export default function TranslatorWorkspace() {
         }
       });
 
-      // 2. Map tracking structures and aliases rules loop
+      // 2. Map structural SFMC link tracking fields and asset properties
       let ctaCounter = 1;       
       let activeCtaIndex = 1;   
       let blockCounter = 1;
@@ -223,7 +231,7 @@ export default function TranslatorWorkspace() {
         }
       });
 
-      // 3. Compile layout structures and trigger immediate browser download loop
+      // 3. Compile output text documents and fire local download routine
       const finalHtml = $.html();
       const fileBlob = new Blob([finalHtml], { type: 'text/html;charset=utf-8;' });
       const downloadUrl = window.URL.createObjectURL(fileBlob);
@@ -234,7 +242,7 @@ export default function TranslatorWorkspace() {
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      setStatus('🚀 Complete! Processed natively inside browser client workspace without network timeout interruptions.');
+      setStatus('🚀 Complete! Precise style-safe layout file generated natively inside client memory spaces.');
     } catch (err: any) {
       setStatus(`❌ Optimization Error: ${err.message}`);
     } finally {
@@ -244,29 +252,56 @@ export default function TranslatorWorkspace() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-6 gap-6">
+      {/* BRAND LOGO WRAPPER */}
       <div className="w-full max-w-2xl flex justify-center mt-4">
         <div className="w-30 h-30 flex items-center justify-center overflow-hidden">
-          <img src="/assets/logo.png" alt="Brand Logo" className="w-full h-full object-contain p-2" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <img 
+            src="/assets/logo.png" 
+            alt="Brand Logo" 
+            className="w-full h-full object-contain p-2" 
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }} 
+          />
         </div>
       </div>
+      
       <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl p-8 mt-5">
         <div className="mb-6">
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 mb-1">📬 Email Localization Studio</h1>
-          <p className="text-slate-400 text-xs">Upload your translation matrix, generate your localization data, and download a production-ready HTML in just 2 simple steps.</p>
+          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 mb-1">
+            📬 Email Localization Studio
+          </h1>
+          <p className="text-slate-400 text-xs">
+            Upload your translation matrix, generate your localization data, and download a production-ready HTML in just 2 simple steps.
+          </p>
         </div>
 
+        {/* WORKFLOW PIPELINE 1: EXCEL PROCESSING MODULE */}
         <div className="bg-slate-950/40 p-5 rounded-xl border border-slate-800 mb-6">
           <h3 className="text-sm font-bold text-teal-400 mb-3 uppercase tracking-wider">Step 1: Convert Excel Sheet to JSON Map</h3>
           <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <input type="file" accept=".xlsx, .xls, .csv" onChange={handleExcelUpload} className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" />
-            <button type="button" onClick={convertExcelToJson} className="w-full sm:w-auto shrink-0 bg-teal-600 hover:bg-teal-700 text-slate-50 text-xs uppercase tracking-wider font-bold py-2 px-4 rounded transition">Convert Matrix</button>
+            <input 
+              type="file" 
+              accept=".xlsx, .xls, .csv" 
+              onChange={handleExcelUpload}
+              className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" 
+            />
+            <button 
+              type="button" 
+              onClick={convertExcelToJson}
+              className="w-full sm:w-auto shrink-0 bg-teal-600 hover:bg-teal-700 text-slate-50 text-xs uppercase tracking-wider font-bold py-2 px-4 rounded transition"
+            >
+              Convert Matrix
+            </button>
           </div>
         </div>
 
         <hr className="border-slate-800 my-4" />
 
+        {/* WORKFLOW PIPELINE 2: TRANSFORMATION EXECUTION FORM */}
         <form onSubmit={executeTranslationSequence} className="space-y-6">
           <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">Step 2: Generate Safe Translated HTML Template</h3>
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
               <label className="block text-xs uppercase font-bold tracking-wider text-slate-400 mb-2">Upload translations.json</label>
@@ -297,11 +332,16 @@ export default function TranslatorWorkspace() {
         <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
           {status}
         </div>
+        
         <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
           <span className="text-xl shrink-0 select-none">⚠️</span>
           <div>
-            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">Production Quality Assurance Notice</h4>
-            <p className="text-slate-300 text-xs leading-relaxed">Automated translation systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template testing environment before scheduling deployment channels.**</p>
+            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
+              Production Quality Assurance Notice
+            </h4>
+            <p className="text-slate-300 text-xs leading-relaxed">
+              Automated translation systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template testing environment before scheduling deployment channels.**
+            </p>
           </div>
         </div>
       </div>

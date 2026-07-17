@@ -37,9 +37,9 @@ export default function TranslatorWorkspace() {
       const keys = Object.keys(targetDict);
       const totalKeys = keys.length;
       
-      setStatus(`📦 Found ${totalKeys} strings. Processing translation loop across multi-pass serverless micro-batches...`);
+      setStatus(`📦 Found ${totalKeys} translation strings. Processing sequential serverless micro-batches...`);
 
-      // We process the HTML template file sequentially in tiny chunk batches
+      // We process the HTML template file content sequentially in tiny chunks
       let currentHtmlState = rawHtmlContent;
       const batchSize = 10; 
 
@@ -54,8 +54,9 @@ export default function TranslatorWorkspace() {
         });
 
         const progressPercent = Math.min(100, Math.round(((i + batchKeys.length) / totalKeys) * 100));
-        setStatus(`⏳ Running micro-batch ${Math.floor(i / batchSize) + 1} (${progressPercent}%) - Bypassing serverless boundaries...`);
+        setStatus(`⏳ Running micro-batch ${Math.floor(i / batchSize) + 1} (${progressPercent}%) - Bypassing serverless limits...`);
 
+        // Send short, fast JSON requests that resolve safely in 1-2 seconds
         const response = await fetch('/api/translate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

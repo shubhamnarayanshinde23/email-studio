@@ -7,79 +7,30 @@ export default function TranslatorWorkspace() {
   const [status, setStatus] = useState('Workspace status: Idle / Ready');
   const [loading, setLoading] = useState(false);
 
-  const readFileAsText = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => resolve(event.target.result);
-      reader.onerror = (error) => reject(error);
-      reader.readAsText(file);
-    });
-  };
-
   const executeTranslationSequence = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatus('⏳ Reading file inputs locally in browser context...');
+    setStatus('⏳ Processing files using Next.js Node backend API routing logic...');
+
+    const formData = new FormData();
+    formData.append('jsonFile', document.getElementById('jsonUpload').files[0]);
+    formData.append('htmlFile', document.getElementById('htmlUpload').files[0]);
+    formData.append('targetLang', targetLang);
+    formData.append('brandCode', brandCode);
 
     try {
-      const jsonFile = document.getElementById('jsonUpload').files[0];
-      const htmlFile = document.getElementById('htmlUpload').files[0];
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        body: formData,
+      });
 
-      const rawJsonText = await readFileAsText(jsonFile);
-      const rawHtmlContent = await readFileAsText(htmlFile);
-
-      const parsedMatrix = JSON.parse(rawJsonText);
-      
-      // Safety checks to locate target dictionary frames inside translations.json
-      const targetDict = parsedMatrix.targetDict || parsedMatrix;
-      const sourceDict = parsedMatrix.sourceDict || parsedMatrix;
-
-      const keys = Object.keys(targetDict);
-      const totalKeys = keys.length;
-      
-      setStatus(`📦 Found ${totalKeys} translation strings. Processing sequential serverless micro-batches...`);
-
-      // We process the HTML template file content sequentially in tiny chunks
-      let currentHtmlState = rawHtmlContent;
-      const batchSize = 10; 
-
-      for (let i = 0; i < totalKeys; i += batchSize) {
-        const batchKeys = keys.slice(i, i + batchSize);
-        const dynamicTargetDict = {};
-        const dynamicSourceDict = {};
-
-        batchKeys.forEach(key => {
-          dynamicTargetDict[key] = targetDict[key];
-          dynamicSourceDict[key] = sourceDict[key];
-        });
-
-        const progressPercent = Math.min(100, Math.round(((i + batchKeys.length) / totalKeys) * 100));
-        setStatus(`⏳ Running micro-batch ${Math.floor(i / batchSize) + 1} (${progressPercent}%) - Bypassing serverless limits...`);
-
-        // Send short, fast JSON requests that resolve safely in 1-2 seconds
-        const response = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            htmlSource: currentHtmlState,
-            targetDict: dynamicTargetDict,
-            sourceDict: dynamicSourceDict,
-            brandCode,
-            targetLang
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'The serverless worker failed to translate batch fragment.');
-        }
-
-        const data = await response.json();
-        currentHtmlState = data.translatedHtml; // Carry the updated HTML state into the next batch iteration pass
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'The server failed processing the template transformation.');
       }
 
-      // Convert final fully processed HTML string data back to a client-side file download object trigger
-      const fileBlob = new Blob([currentHtmlState], { type: 'text/html;charset=utf-8;' });
+      // Convert stream response to direct client file download action
+      const fileBlob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(fileBlob);
       const downloadAnchor = document.createElement('a');
       downloadAnchor.href = downloadUrl;
@@ -88,7 +39,7 @@ export default function TranslatorWorkspace() {
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      setStatus('🚀 Success! Email template successfully translated and downloaded via browser orchestrated pipeline.');
+      setStatus('🚀 Success! Email template successfully translated and downloaded via Cheerio AST.');
     } catch (err) {
       setStatus(`❌ Optimization Error: ${err.message}`);
     } finally {
@@ -174,7 +125,7 @@ export default function TranslatorWorkspace() {
             disabled={loading} 
             className="w-full py-3 bg-gradient-to-r from-emerald-500 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50 cursor-pointer text-sm uppercase tracking-wider"
           >
-            {loading ? '⏳ Processing Batch Arrays...' : '🚀 Generate Translated Email Layout'}
+            {loading ? '⏳ Building Abstract Layout Tree...' : '🚀 Generate Translated Email Layout'}
           </button>
         </form>
 

@@ -1,11 +1,13 @@
 import { processEmailTranslation } from '@/lib/translator';
 
-// Force Netlify to handle this route via the streaming Edge Worker environment
+// FORCE NEXT.JS TO DEPLOY THIS ROUTE TO NETLIFY'S EDGE STREAMING RUNTIME
+// This completely removes the 10-second FUNCTION_INVOCATION_TIMEOUT limit.
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
+    // Edge runtime reads incoming form data values via native Web API specifications
     const formData = await request.formData();
     const jsonFile = formData.get('jsonFile');
     const htmlFile = formData.get('htmlFile');
@@ -42,7 +44,7 @@ export async function POST(request) {
     const targetDict = translationData[matchedLangKey];
     const sourceDict = translationData[matchedSourceKey];
 
-    // Process the template transformation safely
+    // Await the response from the style-preserving translation engine
     const compiledHtmlOutput = await processEmailTranslation(htmlText, targetDict, sourceDict, brandCode, targetLang);
 
     return new Response(compiledHtmlOutput, {
@@ -55,9 +57,14 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Production Edge Handler Error:", error);
+    
+    // Encapsulate runtime errors in JSON so your page.tsx view can parse it safely
     return new Response(
       JSON.stringify({ error: `Internal Engine Error: ${error.message}` }), 
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json; charset=utf-8' } 
+      }
     );
   }
 }

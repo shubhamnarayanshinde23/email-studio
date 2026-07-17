@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
 import { processEmailTranslation } from '@/lib/translator';
 
-// 1. FORCE DEPLOYMENT TO NETLIFY'S EDGE RUNTIME TO PERMANENTLY RESOLVE 10-SECOND TIMEOUT BOUNDARIES
+// Force Netlify to handle this route via the streaming Edge Worker environment
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +42,7 @@ export async function POST(request) {
     const targetDict = translationData[matchedLangKey];
     const sourceDict = translationData[matchedSourceKey];
 
-    // CRITICAL: Await the response from the LLM engine processing loop
+    // Process the template transformation safely
     const compiledHtmlOutput = await processEmailTranslation(htmlText, targetDict, sourceDict, brandCode, targetLang);
 
     return new Response(compiledHtmlOutput, {
@@ -56,14 +55,9 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Production Edge Handler Error:", error);
-    
-    // 2. ENCAPSULATE RUNTIME ERRORS IN JSON SO YOUR CLIENT-SIDE PAGE.TSX CAN PARSE AND DISPLAY THE REAL ERROR
     return new Response(
       JSON.stringify({ error: `Internal Engine Error: ${error.message}` }), 
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json; charset=utf-8' } 
-      }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

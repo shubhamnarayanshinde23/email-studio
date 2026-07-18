@@ -245,6 +245,17 @@ export default function TranslatorWorkspace() {
         <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
           {status}
         </div>
+        <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
+          <span className="text-xl shrink-0 select-none">⚠️</span>
+          <div>
+            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
+              Production Quality Assurance Notice
+            </h4>
+            <p className="text-slate-300 text-xs leading-relaxed">
+              Automated translation systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template testing environment before scheduling deployment channels.**
+            </p>
+          </div>
+        </div>
       </div>
     </main>
   );

@@ -20,7 +20,7 @@ export async function POST(request) {
     const translationData = JSON.parse(jsonText);
 
     const matchedLangKey = Object.keys(translationData).find(k => k.toUpperCase() === targetLang);
-    const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'GTINSIDERS');
+    const matchedSourceKey = Object.keys(translationData).find(k => k.toUpperCase() === 'EN' || k.toUpperCase() === 'BEFR' || k.toUpperCase() === 'GTINSIDERS');
 
     if (!matchedLangKey || !translationData[matchedLangKey]) {
       return new Response(`Target language "${targetLang}" not found in JSON data.`, { status: 400 });

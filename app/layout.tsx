@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EMAIL TRANSLATOR STUDIO",
+  title: "📧EMAIL TRANSLATOR STUDIO",
   description: "Created by SHX Labs",
 };
 

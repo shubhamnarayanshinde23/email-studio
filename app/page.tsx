@@ -38,7 +38,8 @@ export default function TranslatorWorkspace() {
       for (let i = 0; i < excelRows.length; i++) {
         if (excelRows[i]) {
           const rowValues = excelRows[i].map((c: any) => String(c).trim().toUpperCase().replace(/\s+/g, ''));
-          const hasLanguageIndicators = rowValues.some(v => v === 'EN' || v === 'BEFR' || v === 'BENL' || v === 'LUFR' || v === 'LANGUAGE');
+          // FIX: Added explicit string typing to (v: string) to satisfy Vercel's strict compiler configuration checks
+          const hasLanguageIndicators = rowValues.some((v: string) => v === 'EN' || v === 'BEFR' || v === 'BENL' || v === 'LUFR' || v === 'LANGUAGE');
           if (hasLanguageIndicators) {
             headerRowIdx = i;
             break;
@@ -78,8 +79,7 @@ export default function TranslatorWorkspace() {
         // Skip structural header descriptors if they repeat in the processing pass
         if (rawFieldLabel.toLowerCase() === 'language' || rawFieldLabel.toLowerCase() === 'segmentation') continue;
 
-        // FIX: Combine row label with its line index to guarantee absolute structural uniqueness 
-        // This stops duplicate row names (like CTA, Body, URL) from overwriting each other!
+        // Combine row label with its line index to guarantee absolute structural uniqueness 
         const uniqueFieldKey = rawFieldLabel ? `[Row ${i}] ${rawFieldLabel}` : `[Row ${i}] UNNAMED_BLOCK`;
 
         languages.forEach((lang: string) => {
@@ -244,17 +244,6 @@ export default function TranslatorWorkspace() {
 
         <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
           {status}
-        </div>
-        <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
-          <span className="text-xl shrink-0 select-none">⚠️</span>
-          <div>
-            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
-              Production Quality Assurance Notice
-            </h4>
-            <p className="text-slate-300 text-xs leading-relaxed">
-              Automated translation systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template testing environment before scheduling deployment channels.**
-            </p>
-          </div>
         </div>
       </div>
     </main>

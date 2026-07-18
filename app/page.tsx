@@ -10,7 +10,7 @@ export default function TranslatorWorkspace() {
   const [excelRows, setExcelRows] = useState<any[] | null>(null);
 
   // ==========================================
-  // COMPONENT WORKFLOW 1: FULL EXTRACTION PARSING TO JSON
+  // COMPONENT WORKFLOW 1: AGNOSTIC SHEET MATRIX PARSING TO NESTED JSON
   // ==========================================
   const handleExcelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,17 +30,15 @@ export default function TranslatorWorkspace() {
     if (!excelRows || excelRows.length === 0) {
       return alert("Please upload an Excel configuration sheet first.");
     }
-    setStatus('⏳ Running deep extraction parse across all matrix cells...');
+    setStatus('⏳ Running universal cell block matrix parser layout sequence...');
     
     try {
-      // 1. Identify header row index dynamically by targeting language codes
+      // 1. Identify true language header row dynamically (skipping blank prefix lines)
       let headerRowIdx = -1;
       for (let i = 0; i < excelRows.length; i++) {
         if (excelRows[i]) {
-          const hasLanguageIndicators = excelRows[i].some((cell: any) => {
-            const norm = String(cell).trim().toUpperCase().replace(/\s+/g, '');
-            return norm === 'LANGUAGE' || norm === 'BEFR' || norm === 'BENL' || norm === 'LUFR' || norm === 'EN';
-          });
+          const rowValues = excelRows[i].map((c: any) => String(c).trim().toUpperCase().replace(/\s+/g, ''));
+          const hasLanguageIndicators = rowValues.some(v => v === 'EN' || v === 'BEFR' || v === 'BENL' || v === 'LUFR' || v === 'LANGUAGE');
           if (hasLanguageIndicators) {
             headerRowIdx = i;
             break;
@@ -53,37 +51,36 @@ export default function TranslatorWorkspace() {
       const rawHeaders = excelRows[headerRowIdx];
       const headers = rawHeaders.map((h: any) => String(h || "").trim());
       
-      // Target sibling columns are index 1 and beyond
+      // Target localized sibling columns live from index 1 and beyond
       const languages = headers.slice(1).filter((lang: string) => lang.length > 0);
 
       if (languages.length === 0) {
-        throw new Error("Could not detect translation columns (e.g. BE FR, BE NL) to the right of Column 0.");
+        throw new Error("Could not detect translation columns (e.g. EN, BEFR) in the sheet's header row structure.");
       }
 
       const result: any = {};
-      languages.forEach((lang: string, idx: number) => { 
+      languages.forEach((lang: string) => { 
         const cleanKey = lang.toUpperCase().replace(/\s+/g, '');
         result[cleanKey] = {}; 
       });
 
-      // 2. Comprehensive deep scan: parse *every* single row below the header row
+      // 2. Scan every data line sequentially down the workbook matrix
       for (let i = headerRowIdx + 1; i < excelRows.length; i++) {
         const row = excelRows[i];
         if (!row) continue;
 
-        // Check if the row is entirely empty across all tracked translation target columns
+        // Skip completely empty spacer row dividers
         const isRowCompletelyEmpty = row.every((cell: any) => String(cell).trim() === "");
         if (isRowCompletelyEmpty) continue;
 
-        let rawFieldKey = String(row[0] || "").trim();
+        const rawFieldLabel = String(row[0] || "").trim();
         
-        // FIX: If column A is blank but sister cells have translations, generate a structural fallback key name
-        if (!rawFieldKey || rawFieldKey.toLowerCase() === 'nan') {
-          rawFieldKey = `UNNAMED_ROW_${i}`;
-        }
+        // Skip structural header descriptors if they repeat in the processing pass
+        if (rawFieldLabel.toLowerCase() === 'language' || rawFieldLabel.toLowerCase() === 'segmentation') continue;
 
-        // Avoid mapping the header label row again if it gets processed as text data
-        if (rawFieldKey.toLowerCase() === 'language') continue;
+        // FIX: Combine row label with its line index to guarantee absolute structural uniqueness 
+        // This stops duplicate row names (like CTA, Body, URL) from overwriting each other!
+        const uniqueFieldKey = rawFieldLabel ? `[Row ${i}] ${rawFieldLabel}` : `[Row ${i}] UNNAMED_BLOCK`;
 
         languages.forEach((lang: string) => {
           const colIdx = headers.indexOf(lang);
@@ -91,9 +88,9 @@ export default function TranslatorWorkspace() {
             const cleanKey = lang.toUpperCase().replace(/\s+/g, '');
             const cellValue = String(row[colIdx]).trim();
             
-            // Only add data if it has real value to prevent bloating with empty spaces
+            // Clean out invalid text markers while keeping real values safe
             if (cellValue.toLowerCase() !== 'nan' && cellValue !== "") {
-              result[cleanKey][rawFieldKey] = cellValue;
+              result[cleanKey][uniqueFieldKey] = cellValue;
             }
           }
         });
@@ -106,9 +103,8 @@ export default function TranslatorWorkspace() {
       a.download = "translations.json";
       a.click();
       
-      // Calculate parsed count metrics to show total extraction status
-      const extractSample = Object.keys(result)[0] ? Object.keys(result[Object.keys(result)[0]]).length : 0;
-      setStatus(`🚀 Full Extraction Success! Processed ${extractSample} text mapping targets across languages: [${languages.join(', ')}]`);
+      const totalKeysParsed = Object.keys(result)[0] ? Object.keys(result[Object.keys(result)[0]]).length : 0;
+      setStatus(`🚀 Universal Extraction Success! Securely captured ${totalKeysParsed} unique rows across target dialects: [${languages.join(', ')}]`);
     } catch (err: any) {
       setStatus(`❌ Matrix Conversion Error: ${err.message}`);
     }
@@ -249,7 +245,6 @@ export default function TranslatorWorkspace() {
         <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
           {status}
         </div>
-
         <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
           <span className="text-xl shrink-0 select-none">⚠️</span>
           <div>

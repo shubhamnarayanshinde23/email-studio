@@ -8,6 +8,10 @@ export default function TranslatorWorkspace() {
   const [status, setStatus] = useState<string>('Workspace status: Idle / Ready');
   const [loading, setLoading] = useState<boolean>(false);
   const [excelRows, setExcelRows] = useState<any[] | null>(null);
+  
+  // Feature 1 Added States
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // ==========================================
   // COMPONENT WORKFLOW 1: AGNOSTIC SHEET MATRIX PARSING TO NESTED JSON
@@ -33,12 +37,10 @@ export default function TranslatorWorkspace() {
     setStatus('⏳ Running universal cell block matrix parser layout sequence...');
     
     try {
-      // 1. Identify true language header row dynamically (skipping blank prefix lines)
       let headerRowIdx = -1;
       for (let i = 0; i < excelRows.length; i++) {
         if (excelRows[i]) {
           const rowValues = excelRows[i].map((c: any) => String(c).trim().toUpperCase().replace(/\s+/g, ''));
-          // FIX: Added explicit string typing to (v: string) to satisfy Vercel's strict compiler configuration checks
           const hasLanguageIndicators = rowValues.some((v: string) => v === 'EN' || v === 'BEFR' || v === 'BENL' || v === 'LUFR' || v === 'LANGUAGE');
           if (hasLanguageIndicators) {
             headerRowIdx = i;
@@ -52,7 +54,6 @@ export default function TranslatorWorkspace() {
       const rawHeaders = excelRows[headerRowIdx];
       const headers = rawHeaders.map((h: any) => String(h || "").trim());
       
-      // Target localized sibling columns live from index 1 and beyond
       const languages = headers.slice(1).filter((lang: string) => lang.length > 0);
 
       if (languages.length === 0) {
@@ -65,21 +66,17 @@ export default function TranslatorWorkspace() {
         result[cleanKey] = {}; 
       });
 
-      // 2. Scan every data line sequentially down the workbook matrix
       for (let i = headerRowIdx + 1; i < excelRows.length; i++) {
         const row = excelRows[i];
         if (!row) continue;
 
-        // Skip completely empty spacer row dividers
         const isRowCompletelyEmpty = row.every((cell: any) => String(cell).trim() === "");
         if (isRowCompletelyEmpty) continue;
 
         const rawFieldLabel = String(row[0] || "").trim();
         
-        // Skip structural header descriptors if they repeat in the processing pass
         if (rawFieldLabel.toLowerCase() === 'language' || rawFieldLabel.toLowerCase() === 'segmentation') continue;
 
-        // Combine row label with its line index to guarantee absolute structural uniqueness 
         const uniqueFieldKey = rawFieldLabel ? `[Row ${i}] ${rawFieldLabel}` : `[Row ${i}] UNNAMED_BLOCK`;
 
         languages.forEach((lang: string) => {
@@ -88,7 +85,6 @@ export default function TranslatorWorkspace() {
             const cleanKey = lang.toUpperCase().replace(/\s+/g, '');
             const cellValue = String(row[colIdx]).trim();
             
-            // Clean out invalid text markers while keeping real values safe
             if (cellValue.toLowerCase() !== 'nan' && cellValue !== "") {
               result[cleanKey][uniqueFieldKey] = cellValue;
             }
@@ -117,6 +113,7 @@ export default function TranslatorWorkspace() {
     e.preventDefault();
     setLoading(true);
     setStatus('⏳ Running server template localization engine...');
+    setPreviewHtml(''); // Reset active display frame targets
 
     const jsonInput = document.getElementById('jsonUpload') as HTMLInputElement;
     const htmlInput = document.getElementById('htmlUpload') as HTMLInputElement;
@@ -150,16 +147,10 @@ export default function TranslatorWorkspace() {
         throw new Error(errorMessage);
       }
 
-      const fileBlob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(fileBlob);
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.href = downloadUrl;
-      downloadAnchor.download = `${sanitizedLang}_translated_email.html`;
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      setStatus('🚀 Complete! Dynamic layout file generated successfully without text-shifting errors.');
+      // Feature 1 Modification: Catch the raw string response text layout stream directly
+      const htmlTextOutput = await response.text();
+      setPreviewHtml(htmlTextOutput);
+      setStatus('🚀 Engine processing complete! Live layout rendering below.');
     } catch (err: any) {
       setStatus(`❌ Optimization Error: ${err.message}`);
     } finally {
@@ -167,9 +158,23 @@ export default function TranslatorWorkspace() {
     }
   };
 
+  // Helper handling utility to download layout after review checks pass
+  const downloadProcessedTemplate = () => {
+    if (!previewHtml) return;
+    const sanitizedLang = targetLang.trim().toUpperCase().replace(/\s+/g, '');
+    const blob = new Blob([previewHtml], { type: 'text/html; charset=utf-8' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.href = downloadUrl;
+    downloadAnchor.download = `${sanitizedLang}_translated_email.html`;
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-6 gap-6">
-      <div className="w-full max-w-2xl flex justify-center mt-4">
+    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-6 gap-6 w-full">
+      <div className="w-full max-w-5xl flex justify-center mt-4">
         <div className="w-30 h-30 flex items-center justify-center overflow-hidden">
           <img 
             src="/assets/logo.png" 
@@ -181,81 +186,137 @@ export default function TranslatorWorkspace() {
           />
         </div>
       </div>
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl p-8 mt-5">
-        <div className="mb-6">
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 mb-1">📬 Email Localization Studio</h1>
-          <p className="text-slate-400 text-xs">
-            Upload your translation matrix, generate your localization data, and download a production-ready HTML in just 2 simple steps.
-          </p>
-        </div>
 
-        {/* WORKFLOW PIPELINE 1: EXCEL PROCESSING MODULE */}
-        <div className="bg-slate-950/40 p-5 rounded-xl border border-slate-800 mb-6">
-          <h3 className="text-sm font-bold text-teal-400 mb-3 uppercase tracking-wider">Step 1: Convert Excel Sheet to JSON Map</h3>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* LEFT WORKSPACE MODULE (Controls Form) */}
+        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl p-6 space-y-6">
+          <div>
+            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 mb-1">📬 Email Localization</h1>
+            <p className="text-slate-400 text-xs">
+              Upload your translation matrix, generate clean components, and preview structural results instantly.
+            </p>
+          </div>
+
+          {/* STEP 1 CONTROLS */}
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800 space-y-3">
+            <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider">Step 1: Excel Sheet to JSON Map</h3>
             <input 
               type="file" 
               accept=".xlsx,.xlsm,.xls,.csv" 
               onChange={handleExcelUpload}
-              className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" 
+              className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" 
             />
             <button 
               type="button" 
               onClick={convertExcelToJson}
-              className="w-full sm:w-auto shrink-0 bg-teal-600 hover:bg-teal-700 text-slate-50 text-xs uppercase tracking-wider font-bold py-2 px-4 rounded transition"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-slate-50 text-xs uppercase tracking-wider font-bold py-2 px-4 rounded transition"
             >
               Convert Matrix
             </button>
           </div>
+
+          {/* STEP 2 CONTROLS */}
+          <form onSubmit={executeTranslationSequence} className="space-y-4">
+            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Step 2: Translate HTML Layout Template</h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Upload translations.json</label>
+                <input required id="jsonUpload" type="file" accept=".json" className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Upload English HTML</label>
+                <input required id="htmlUpload" type="file" accept=".html,.htm" className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Target Language</label>
+                <input type="text" value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2 text-xs rounded-lg focus:ring-1 focus:ring-teal-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Brand Identity</label>
+                <input type="text" value={brandCode} onChange={(e) => setBrandCode(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2 text-xs rounded-lg focus:ring-1 focus:ring-teal-500 outline-none" />
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50 text-xs uppercase tracking-wider cursor-pointer">
+              {loading ? '⏳ Generating Preview...' : '🚀 Render Live Localization'}
+            </button>
+          </form>
+
+          <div className="p-3 bg-slate-950 border border-slate-850 font-mono text-[11px] rounded-lg text-teal-400 whitespace-pre-line">
+            {status}
+          </div>
         </div>
 
-        <hr className="border-slate-800 my-4" />
-
-        {/* WORKFLOW PIPELINE 2: TRANSFORMATION EXECUTION FORM */}
-        <form onSubmit={executeTranslationSequence} className="space-y-6">
-          <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">Step 2: Generate Safe Translated HTML Template</h3>
+        {/* RIGHT PREVIEW MODULE (Feature 1 Visual Pane) */}
+        <div className="lg:col-span-7 flex flex-col bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl overflow-hidden h-[630px]">
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
-              <label className="block text-xs uppercase font-bold tracking-wider text-slate-400 mb-2">Upload translations.json</label>
-              <input required id="jsonUpload" type="file" accept=".json" className="w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" />
+          {/* HEADER NAV CONTROL STRIP */}
+          <div className="bg-slate-950/80 p-3 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-slate-400 text-xs font-mono ml-2 select-none">Live Canvas Sandbox Preview</span>
             </div>
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800">
-              <label className="block text-xs uppercase font-bold tracking-wider text-slate-400 mb-2">Upload Original HTML Template</label>
-              <input required id="htmlUpload" type="file" accept=".html,.htm" className="w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer" />
-            </div>
+            
+            {previewHtml && (
+              <div className="flex items-center gap-2">
+                {/* Desktop Toggle View Option */}
+                <button 
+                  onClick={() => setViewMode('desktop')} 
+                  className={`px-2.5 py-1 rounded text-xs transition font-medium ${viewMode === 'desktop' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                >
+                  🖥️ Desktop
+                </button>
+                {/* Mobile Toggle View Option */}
+                <button 
+                  onClick={() => setViewMode('mobile')} 
+                  className={`px-2.5 py-1 rounded text-xs transition font-medium ${viewMode === 'mobile' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                >
+                  📱 Mobile
+                </button>
+                {/* Active Export Download Anchor Trigger Button */}
+                <button 
+                  onClick={downloadProcessedTemplate}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1 px-3 rounded transition flex items-center gap-1"
+                >
+                  📥 Export HTML
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs uppercase font-bold tracking-wider text-slate-400 mb-1">Target Language Key</label>
-              <input type="text" value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2.5 text-sm rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" />
-            </div>
-            <div>
-              <label className="block text-xs uppercase font-bold tracking-wider text-slate-400 mb-1">Brand Tracking Identity Code</label>
-              <input type="text" value={brandCode} onChange={(e) => setBrandCode(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-2.5 text-sm rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition" />
-            </div>
+          {/* ACTIVE SANDBOX SCREEN CANVAS BLOCK */}
+          <div className="flex-1 bg-slate-950 flex justify-center items-center overflow-auto p-4 pattern-grid">
+            {previewHtml ? (
+              <div 
+                className="h-full bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300"
+                style={{ width: viewMode === 'desktop' ? '100%' : '375px' }}
+              >
+                <iframe 
+                  title="Localized Email Template Render Output"
+                  srcDoc={previewHtml}
+                  className="w-full h-full border-0 bg-white"
+                  sandbox="allow-same-origin allow-popups"
+                />
+              </div>
+            ) : (
+              <div className="text-center text-slate-500 max-w-xs space-y-2">
+                <span className="text-4xl block select-none">🎨</span>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Visual Sandbox Empty</h4>
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Run Step 1 and Step 2. Your localized template layout will instantly populate an interactively testable frame here.
+                </p>
+              </div>
+            )}
           </div>
-
-          <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-teal-500 to-indigo-600 text-white font-bold rounded-lg shadow-lg hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50 text-sm uppercase tracking-wider cursor-pointer">
-            {loading ? '⏳ Rendering Unified Layout Tree...' : '🚀 Localize HTML Content Layout'}
-          </button>
-        </form>
-
-        <div className="mt-6 p-4 bg-slate-950 border border-slate-850 font-mono text-xs rounded-lg text-teal-400 whitespace-pre-line">
-          {status}
         </div>
-        <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
-          <span className="text-xl shrink-0 select-none">⚠️</span>
-          <div>
-            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
-              Production Quality Assurance Notice
-            </h4>
-            <p className="text-slate-300 text-xs leading-relaxed">
-              Automated translation systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template testing environment before scheduling deployment channels.**
-            </p>
-          </div>
-        </div>
+
       </div>
     </main>
   );

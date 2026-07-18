@@ -1,8 +1,9 @@
 'use client';
 import { useState, FormEvent, ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
+import dynamic from 'next/dynamic';
 
-export default function TranslatorWorkspace() {
+function TranslatorWorkspace() {
   const [targetLang, setTargetLang] = useState<string>('BEFR');
   const [brandCode, setBrandCode] = useState<string>('AP');
   const [status, setStatus] = useState<string>('Workspace status: Idle / Ready');
@@ -113,7 +114,7 @@ export default function TranslatorWorkspace() {
     e.preventDefault();
     setLoading(true);
     setStatus('⏳ Running server template localization engine...');
-    setPreviewHtml(''); // Reset active display frame targets
+    setPreviewHtml(''); 
 
     const jsonInput = document.getElementById('jsonUpload') as HTMLInputElement;
     const htmlInput = document.getElementById('htmlUpload') as HTMLInputElement;
@@ -147,10 +148,9 @@ export default function TranslatorWorkspace() {
         throw new Error(errorMessage);
       }
 
-      // Feature 1 Modification: Catch the raw string response text layout stream directly
       const htmlTextOutput = await response.text();
       setPreviewHtml(htmlTextOutput);
-      setStatus('🚀 Engine processing complete! Live layout rendering below.');
+      setStatus('🚀 Engine processing complete! Live layout rendering now.');
     } catch (err: any) {
       setStatus(`❌ Optimization Error: ${err.message}`);
     } finally {
@@ -158,7 +158,6 @@ export default function TranslatorWorkspace() {
     }
   };
 
-  // Helper handling utility to download layout after review checks pass
   const downloadProcessedTemplate = () => {
     if (!previewHtml) return;
     const sanitizedLang = targetLang.trim().toUpperCase().replace(/\s+/g, '');
@@ -264,23 +263,20 @@ export default function TranslatorWorkspace() {
               <span className="text-slate-400 text-xs font-mono ml-2 select-none">Live Canvas Sandbox Preview</span>
             </div>
             
-            {previewHtml && (
+            {previewHtml && !loading && (
               <div className="flex items-center gap-2">
-                {/* Desktop Toggle View Option */}
                 <button 
                   onClick={() => setViewMode('desktop')} 
                   className={`px-2.5 py-1 rounded text-xs transition font-medium ${viewMode === 'desktop' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
                 >
                   🖥️ Desktop
                 </button>
-                {/* Mobile Toggle View Option */}
                 <button 
                   onClick={() => setViewMode('mobile')} 
                   className={`px-2.5 py-1 rounded text-xs transition font-medium ${viewMode === 'mobile' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
                 >
                   📱 Mobile
                 </button>
-                {/* Active Export Download Anchor Trigger Button */}
                 <button 
                   onClick={downloadProcessedTemplate}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1 px-3 rounded transition flex items-center gap-1"
@@ -292,8 +288,23 @@ export default function TranslatorWorkspace() {
           </div>
 
           {/* ACTIVE SANDBOX SCREEN CANVAS BLOCK */}
-          <div className="flex-1 bg-slate-950 flex justify-center items-center overflow-auto p-4 pattern-grid">
-            {previewHtml ? (
+          <div className="flex-1 bg-slate-950 flex justify-center items-center overflow-auto p-4 pattern-grid position-relative">
+            {loading ? (
+              /* DYNAMIC NEON LOADER ANIMS PANE */
+              <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-t-indigo-400 border-r-teal-400 animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+                  <div className="absolute top-2 right-2 bottom-2 left-2 rounded-full border-2 border-slate-800 border-b-teal-400 animate-[spin_1s_linear_infinite_reverse]"></div>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400 animate-pulse">
+                    🏗️ Building your email structure...
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-mono">☕ Grab a coffee while we do the heavy lifting...</p>
+                </div>
+              </div>
+            ) : previewHtml ? (
               <div 
                 className="h-full bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300"
                 style={{ width: viewMode === 'desktop' ? '100%' : '375px' }}
@@ -306,29 +317,32 @@ export default function TranslatorWorkspace() {
                 />
               </div>
             ) : (
-              <div className="text-center text-slate-500 max-w-xs space-y-2">
+              <div className="text-center text-red-500 max-w-xs space-y-2">
                 <span className="text-4xl block select-none">🎨</span>
-                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Visual Sandbox Empty</h4>
-                <p className="text-[11px] leading-relaxed text-slate-500">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-red-400">Visual Sandbox Empty</h4>
+                <p className="text-[11px] leading-relaxed text-red-500">
                   Run Step 1 and Step 2. Your localized template layout will instantly populate an interactively testable frame here.
                 </p>
               </div>
             )}
           </div>
-          <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3">
-          <span className="text-xl shrink-0 select-none">⚠️</span>
-          <div>
-            <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
-              Production Quality Assurance Notice
-            </h4>
-            <p className="text-slate-300 text-xs leading-relaxed">
-              Automated translation <span className='text-red-400'>systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template</span> testing environment before deployment channels.**
-            </p>
+          
+          <div className="mt-4 p-4.5 bg-amber-950/30 border border-amber-800/40 rounded-xl flex items-start gap-3 m-4 shrink-0">
+            <span className="text-xl shrink-0 select-none">⚠️</span>
+            <div>
+              <h4 className="text-amber-400 text-xs uppercase font-black tracking-wider mb-0.5">
+                Production Quality Assurance Notice
+              </h4>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                Automated translation <span className='text-red-400'>systems can occasionally introduce structural irregularities, missing phrase pairings, or text formatting shifts. **Always manually verify the translated HTML file layout inside your template</span> testing environment before deployment channels.**
+              </p>
+            </div>
           </div>
-        </div>
         </div>
 
       </div>
     </main>
   );
 }
+
+export default dynamic(() => Promise.resolve(TranslatorWorkspace), { ssr: false });

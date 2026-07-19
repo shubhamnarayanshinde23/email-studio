@@ -173,18 +173,29 @@ function TranslatorWorkspace() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-6 gap-6 w-full">
-      <div className="w-full max-w-5xl flex justify-center mt-4">
-        <div className="w-30 h-30 flex items-center justify-center overflow-hidden">
-          <img 
-            src="/assets/logo.png" 
-            alt="Brand Logo" 
-            className="w-full h-full object-contain p-2" 
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }} 
-          />
-        </div>
-      </div>
+    <div className="w-full max-w-5xl flex justify-center mt-4">
+  {/* Custom CSS injected inline to create the 30-second rotation interval rule */}
+  <style>{`
+    @keyframes slowPeriodicRotate {
+      0%, 93% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-slow-rotate {
+      animation: slowPeriodicRotate 10s infinite cubic-bezier(0.65, 0, 0.35, 1);
+    }
+  `}</style>
+
+  <div className="w-32 h-32 flex items-center justify-center overflow-hidden transition-all duration-700 hover:scale-105">
+    <img 
+      src="/assets/logo.png" 
+      alt="Brand Logo" 
+      className="w-full h-full object-contain p-2 animate-slow-rotate" 
+      onError={(e) => {
+        e.currentTarget.style.display = 'none';
+      }} 
+    />
+  </div>
+</div>
 
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         

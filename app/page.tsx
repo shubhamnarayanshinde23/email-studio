@@ -339,8 +339,15 @@ function TranslatorWorkspace() {
             </div>
           </div>
         </div>
-
       </div>
+      <div className="mt-auto p-4 w-full flex flex-col items-center justify-center text-center shrink-0">
+  <div className="flex items-center gap-2 bg-amber-950/20 border border-amber-850/40 px-4 py-2 rounded-xl backdrop-blur-sm">
+    <span className="text-sm select-none animate-pulse">❤️</span>
+    <span className="text-slate-400 font-mono text-[11px] tracking-wide">
+      Made with love in India by <strong className="text-teal-400 font-semibold font-sans"><a target='_blank' href="https://shubhamshinde097.netlify.app/" title="portfolio">@ShUbHAm</a></strong>
+    </span>
+  </div>
+</div>
     </main>
   );
 }
